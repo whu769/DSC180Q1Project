@@ -1,3 +1,5 @@
 Dataset/
 
 pickleObjects/
+
+__pycache__/
