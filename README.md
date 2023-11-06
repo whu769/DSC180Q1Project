@@ -1,6 +1,27 @@
 # DSC180Q1Project
 DSC180 Project. Goal is to create a search algorithm and train it on the CodeSearchNet corpus. 
 
+# Introduction
+
+# Our process
+
+# How this Repo is Constructed (Currently)
+
+## Folders
+
+Dataset/Testing Folder: This is where the query and annotations csv files are for testing our model results.
+
+csv_output Folder: This is where csv output files are put into when we're predicting results of queries.
+
+WH Folder: This is where all of William Hu's older code files are. They're now put there as prior research. 
+
+## Python Files & Jupyter Notebooks
+
+relevanceeval.py: This file was taken from the CodeSearchNet repository (Link: https://github.com/github/CodeSearchNet) and is used to measure the NDCG score of our predictions
+
+test.ipynb: This file is the "testing" grounds of our project so far. Has most of the code where the model is trained.
+
+generate_results.ipynb: This file is where the output of our csv is compared to the results of the annotations.csv file.
 
 # Setup Instructions
 
