@@ -1,6 +1,10 @@
 # DSC180Q1Project
 DSC180 Project. Goal is to create a search algorithm and train it on the CodeSearchNet corpus. 
 
+### Authors
+Megan Huynh (mlhuynh@ucsd.edu)
+William Hu (wyhu@ucsd.edu)
+
 # Introduction
 
 # Our process
@@ -50,6 +54,12 @@ The queries file consists of 99 basic coding queries which are the basis of the 
 ## Storing the Data
 
 In the test.ipnyb Jupyter Notebook file, there are cells which specifically save and load pickled objects to reduce time spent training the large models. It's recommended to create a folder within the /Dataset folder (Example: pickleObjects/), include it in the gitignore file, and accessing the saved models/results there. 
+
+# Code Credit
+
+We utilized pre-existing code from many people. Specifically code from: the CodeSearchNet (https://github.com/github/CodeSearchNet), HuggingFace tutorials (https://huggingface.co/learn/nlp-course/chapter5/6?fw=pt) and William Scott (https://github.com/williamscott701/Information-Retrieval/tree/master/2.%20TF-IDF%20Ranking%20-%20Cosine%20Similarity%2C%20Matching%20Score)
+
+There are comments above specific functions/code cells/python files crediting the respective authors when using their code. 
 
 ### Disclaimer:
 
