@@ -45,6 +45,11 @@ For DSMLP machines, they should have the prerequisite packages installed so clon
 
 This project utilizes the CodeSearchNet dataset. To access it, specifically the 2M annotated rows of data, we utilize HuggingFace. After importing HuggingFaces' datasets package, run ```load_dataset("code_search_net", "all")```. 
 
+#### Disclaimer when loading data on DSMLP
+I advise caution when running ```load_dataset("code_search_net", "all")``` as my datahub instance crashed and I had to clear the cache before being able to access it again. I recommend loading a smaller subset, possibly for just all the Python functions run 
+```load_dataset("code_search_net", "python")```. This will load a smaller dataset and hopefully not crash your datahub.
+
+*** 
 Within the Dataset folder, there is also a Testing folder which contains two files: annotationStore.csv and queries.csv
 
 The annotationStore file consists of ~4,000 rows of data in the format of query, github url, coding language, and expert annotation ranking. These annotation rankings vary from 1-10 in terms of relevance and will be utilized to calculate the NDCG and MRR scores. 
