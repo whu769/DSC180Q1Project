@@ -7,7 +7,36 @@ William Hu (wyhu@ucsd.edu)
 
 # Introduction
 
-# Our process
+The goal of this project is to explore and build a search engine that can deliver good quantitative and qualitative results to code queries. We're seeking to match or surpass the NDCG baseline score of 0.337 and obtain 
+results we deem qualitatively accurate.
+
+### Architecture/Steps:
+First our search engine will take in a natural language query and K desired results the user wants returned, tokenize it in both the semantic search embeddings space and the nlp tokenization vector, then it will go through various
+matching algorithms (Cosine similarity, FAISS, ANNOY) etc and we will create a method of combining both the semantic results with the tf-idf/bm25 results and return the best K results.
+
+### Algorithms
+We plan to have two main components: the semantic search portion and the term-frequency/keyword matching portion.
+
+For the semantic search, we want to embed a variety of fields (the function documentation, the query, the function code) with different trained models. Things we want to look into specifically are pre-trained code models such as codeBERT and training our own models. 
+
+For the term-frequency/keyword portion we want to explore the tokenization of various fields similar to the semantic search. We want to look into n-grams, tokenizing the code strings, pre-processing the strings, etc. 
+
+When grading the semantic and term frequency embeddings we plan to test different similarity functions such as: cosine similarity, euclidean distance, FAISS, ANNOY. 
+
+After these portions are calculated, we want to combine them in an optimal manner. We want to test a variety of combinations such as linear combinations, first term-frequency then semantic, taking the top tf-idf then filling with semantic, and figuring out the best
+performing hyper parameters for this. 
+
+### Dataset
+We are using the CodeSearchNet corpus, specifically the ~2M entries of functions including documentation. There is also 2 csvs; one containing 99 basic queries to test and one containing expert annotations of the given queries.
+
+### Evaluation
+Quantitative: We want to assess our results with the expertAnnotations on a variety of metrics including NDCG, MRR, and accuracy. We aim to match and surpass the NDCG baseline with ElasticSearch of 0.337.
+
+Qualitative: Ultimately, we want results that pass the "eye test" so if given a query, are the results useful and we'll run queries and see if the results make sense.
+
+### Improvements
+Some goals we have for this project: Be able to use our algorithm to answer real life coding queries we have (LOL), developing models that are trained and return results in a reasonable time frame (don't want minute long waits), and match a top paper which 
+has also done research on this very problem.
 
 # How this Repo is Constructed (Currently)
 
