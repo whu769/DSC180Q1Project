@@ -71,6 +71,9 @@ def coverage_per_language(predictions: Dict[str, List[str]],
                 if url in urls_in_predictions:
                     num_covered += 1
 
+    #Added this for divide by zero error
+    if num_annotations == 0:
+        return 0
     return num_covered / num_annotations
 
 def ndcg(predictions: Dict[str, List[str]], relevance_scores: Dict[str, Dict[str, float]],
@@ -96,6 +99,10 @@ def ndcg(predictions: Dict[str, List[str]], relevance_scores: Dict[str, Dict[str
             continue
         num_results += 1
         ndcg_sum += query_dcg / query_idcg
+
+    #Quick thing to eliminate divide by zero error
+    if num_results == 0:
+        return 0
     return ndcg_sum / num_results
 
 
