@@ -1,0 +1,15 @@
+,Language,Query,GitHubUrl,Relevance,Notes
+365,Ruby,how to get html of website,https://github.com/sugaryourcoffee/syclink/blob/941ee2045c946daa1e0db394eb643aa82c1254cc/lib/syclink/designer.rb#L129-L133,0.0,
+387,Python,unzipping large files,https://github.com/OLC-Bioinformatics/sipprverse/blob/d4f10cdf8e1a39dac0953db61c21c97efc6006de/cgecore/utility.py#L471-L484,1.0,
+388,Python,unzipping large files,https://github.com/OLC-Bioinformatics/sipprverse/blob/d4f10cdf8e1a39dac0953db61c21c97efc6006de/cgecore/utility.py#L471-L484,2.0,
+389,Python,unzipping large files,https://github.com/OLC-Bioinformatics/sipprverse/blob/d4f10cdf8e1a39dac0953db61c21c97efc6006de/cgecore/utility.py#L471-L484,1.0,
+469,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,2.0,
+470,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,2.0,"Don't ever use CBC mode (Bleichenbacher, etc.)"
+471,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,3.0,
+472,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,3.0,
+1907,PHP,create cookie,https://github.com/cygnite/framework/blob/58d0cc1c946415eb0867d76218bd35166e999093/src/Cygnite/Common/Input/Input.php#L226-L233,1.0,
+2232,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,1.0,The function performs pasting FROM the clipboard instead of copying TO the clipboard. This is an interesting test case of function relatedness vs relevance with respect to the given query.
+2233,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,3.0,
+2234,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,3.0,
+2237,Java,copy to clipboard,https://github.com/percolate/caffeine/blob/e2265cab474a6397f4d75b1ed928c356a7b9672e/caffeine/src/main/java/com/percolate/caffeine/ClipboardUtils.java#L17-L27,1.0,
+3086,Ruby,how to get html of website,https://github.com/sugaryourcoffee/syclink/blob/941ee2045c946daa1e0db394eb643aa82c1254cc/lib/syclink/designer.rb#L129-L133,0.0,
