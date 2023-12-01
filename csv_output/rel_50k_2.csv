@@ -1,0 +1,22 @@
+,Language,Query,GitHubUrl,Relevance,Notes
+1257,Python,get current ip address,https://github.com/istresearch/scrapy-cluster/blob/13aaed2349af5d792d6bcbfcadc5563158aeb599/crawler/crawling/distributed_scheduler.py#L275-L298,0.0,
+1258,Python,get current ip address,https://github.com/istresearch/scrapy-cluster/blob/13aaed2349af5d792d6bcbfcadc5563158aeb599/crawler/crawling/distributed_scheduler.py#L275-L298,1.0,
+1266,PHP,get current ip address,https://github.com/iMoneza/imoneza-php-api/blob/8347702c88c3cf754d21631a304a2c2d3abac98e/src/iMoneza/Helper.php#L20-L35,3.0,
+1325,PHP,readonly array,https://github.com/silverstripe/silverstripe-framework/blob/ed7aaff7da61eefa172fe213ec25e35d2568bc20/src/Forms/GridField/GridField.php#L309-L314,1.0,
+2352,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,1.0,The function performs pasting FROM the clipboard instead of copying TO the clipboard. This is an interesting test case of function relatedness vs relevance with respect to the given query.
+2353,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,3.0,
+2354,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,3.0,
+2357,Java,copy to clipboard,https://github.com/percolate/caffeine/blob/e2265cab474a6397f4d75b1ed928c356a7b9672e/caffeine/src/main/java/com/percolate/caffeine/ClipboardUtils.java#L17-L27,1.0,
+3289,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,1.0,The function performs pasting FROM the clipboard instead of copying TO the clipboard. This is an interesting test case of function relatedness vs relevance with respect to the given query.
+3290,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,3.0,
+3291,Python,copy to clipboard,https://github.com/spyder-ide/spyder/blob/f76836ce1b924bcc4efd3f74f2960d26a4e528e0/spyder/plugins/variableexplorer/widgets/collectionseditor.py#L1242-L1252,3.0,
+3321,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,2.0,
+3322,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,2.0,"Don't ever use CBC mode (Bleichenbacher, etc.)"
+3323,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,3.0,
+3324,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,3.0,
+3473,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,2.0,
+3474,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,2.0,"Don't ever use CBC mode (Bleichenbacher, etc.)"
+3475,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,3.0,
+3476,Python,aes encryption,https://github.com/raymontag/kppy/blob/a43f1fff7d49da1da4b3d8628a1b3ebbaf47f43a/kppy/database.py#L861-L871,3.0,
+4305,Python,save list to file,https://github.com/pndurette/gTTS/blob/b01ac4eb22d40c6241202e202d0418ccf4f98460/gtts/tts.py#L238-L250,1.0,
+4306,Python,save list to file,https://github.com/pndurette/gTTS/blob/b01ac4eb22d40c6241202e202d0418ccf4f98460/gtts/tts.py#L238-L250,1.0,
