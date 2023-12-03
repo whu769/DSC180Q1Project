@@ -95,14 +95,15 @@ class searchmodel:
             # self.make_inverted_index_docs_bigrams_only()
                 
        
-        stop_words = set(stopwords.words('english'))
-        #self.tsed_DF["clean_code_tokens"] =  self.tsed_DF["func_code_tokens"].apply(clean_code_tokens)
-        self.tsed_DF["func_doc_tokens"] = self.tsed_DF["func_documentation_string"].apply(lambda x: rgx_tokenizer.tokenize(x))
-        self.tsed_DF["func_doc_stem_tokens"] = self.tsed_DF["func_doc_tokens"].apply(lambda x: [st.stem(word) for word in x if word not in stop_words])
-        self.create_tfidf(bigrams=True) # SWITCH THIS BACK
+        # Can delete all this lmao
+        # stop_words = set(stopwords.words('english'))
+        # self.tsed_DF["clean_code_tokens"] =  self.tsed_DF["func_code_tokens"].apply(clean_code_tokens)
+        # self.tsed_DF["func_doc_tokens"] = self.tsed_DF["func_documentation_string"].apply(lambda x: rgx_tokenizer.tokenize(x))
+        # self.tsed_DF["func_doc_stem_tokens"] = self.tsed_DF["func_doc_tokens"].apply(lambda x: [st.stem(word) for word in x if word not in stop_words])
+        # self.create_tfidf(bigrams=True) # SWITCH THIS BACK
         # self.create_tfidf_bigrams_only(bigrams=True) #SWITCH TO TRUE FOR BIGRAMS
 
-    #Legacy 
+    #Legacy --> Get rid of soon
     def make_inverted_index_code(self):
         tsed_DF = self.embed_dataset.to_pandas()
 
@@ -170,7 +171,7 @@ class searchmodel:
         stop_words = set(stopwords.words('english'))
         tsed_DF = self.embed_dataset.to_pandas()
         tsed_DF["func_doc_tokens"] = tsed_DF["func_documentation_string"].apply(lambda x: rgx_tokenizer.tokenize(x))
-        tsed_DF["func_doc_stem_tokens"] = tsed_DF["func_doc_tokens"].apply(lambda x: [st.stem(word) for word in x if word not in stop_words])
+        tsed_DF["func_doc_stem_tokens"] = tsed_DF["func_doc_tokens"].apply(lambda x: [st.stem(word.lower()) for word in x if word not in stop_words])
         inverted_index = {}
 
         bigram_lst = []
@@ -183,30 +184,35 @@ class searchmodel:
         # bigram_counter = (Counter({k: c for k, c in bigram_counter.items() if c <= 1000 and c >= 50}))
 
         self.bigram_set = set(list(bigram_counter.keys()))
+        total_len_sum = 0
 
         for i in range(len(tsed_DF)):
             token_counter = Counter(tsed_DF.iloc[i]["func_doc_stem_tokens"])
             bigram_counter_i = Counter(list(ngrams(tsed_DF.iloc[i]["func_doc_stem_tokens"], 2)))
+            total_len = sum(token_counter.values()) + sum(bigram_counter_i.values())
+            total_len_sum += total_len
 
             for token in token_counter:
                 if token not in inverted_index:
                     inverted_index[token] = {}
-                inverted_index[token][i] = token_counter[token]
+                inverted_index[token][i] = (token_counter[token], total_len)
             
             for bigram in bigram_counter_i:
                 if bigram in self.bigram_set:
                     if bigram not in inverted_index:
                         inverted_index[bigram] = {}
-                    inverted_index[bigram][i] = bigram_counter_i[bigram]
+                    inverted_index[bigram][i] = (bigram_counter_i[bigram], total_len)
         
         #Pickle afterwards
         with open(f"{self.file_paths['inverted_index']}", 'wb') as f:  # open a text file
             pickle.dump(inverted_index, f) # serialize the list
             f.close()
         
+        self.bm_avg_DL = total_len_sum / len(tsed_DF)
         self.inverted_index = inverted_index
         self.tsed_DF = tsed_DF
     
+    # Only bigrams
     def make_inverted_index_docs_bigrams_only(self):
         # tsed_DF = self.embed_dataset.select_columns(["func_documentation_string", "embeddings"])
         stop_words = set(stopwords.words('english'))
@@ -283,7 +289,7 @@ class searchmodel:
             tokens = []#self.tsed_DF[column].iloc[i] Only bigrams lmao
             if bigrams:
                 bigram_lst_i = []
-                for bigram in list(ngrams(self.tsed_DF.iloc[i]["func_doc_stem_tokens"], 2)):
+                for bigram in list(ngrams(self.tsed_DF.iloc[i][column], 2)):
                     if bigram in self.bigram_set:
                         bigram_lst_i.append(bigram)
                 tokens += bigram_lst_i
@@ -299,7 +305,7 @@ class searchmodel:
                 tf_idf[i, token] = tf * idf
         self.tf_idf = tf_idf
 
-
+    # Function to make embeddings. Right now only for 1 field.
     def make_embeddings(self, dataset):
         # model_ckpt = hg_model #Can/Should test different models
         # self.tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
@@ -321,131 +327,139 @@ class searchmodel:
 
         self.embed_dataset = dataset_embeddings
 
-    def query_results_lc_naive_custom(self, query_string, k = 10, tf_alpha = 0.75, bigrams = True): #lc = Linear-combination, Implicitly weighted towards TF-IDF
-        stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
-
-
-        rel_indices = []
-        
-        for token in query_tokens:
-            if token in self.inverted_index:
-                rel_indices += list(self.inverted_index[token].keys())
-        
-        if bigrams:
-            bigram_lst = list(ngrams(query_tokens, 2))
-            for bigram in bigram_lst:
-                if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO")
-                    query_tokens.append(bigram)
-                    rel_indices += list(self.inverted_index[bigram].keys())
-        
-        rel_indices = set(rel_indices)
-
-        query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
-        # len(query_embedding[0])
-        # len(tsed_DF["embeddings"][0])
-        
-        result_lst = []
-        for i in rel_indices:
-            tf_score = 0
-            for token in query_tokens:
-                if (i, token) in self.tf_idf:
-                    if type(token) != str:
-                        # print("HELLO", token)
-                        tf_score += 3 * (self.tf_idf[(i, token)])
-                    else:
-                        tf_score += (self.tf_idf[(i, token)])
-
-            result_lst.append([i, tf_score, cosine_sim(self.tsed_DF["embeddings"][i], query_embedding[0])])
-        
-        result_lst.sort(reverse=True, key = lambda x: tf_alpha * x[1] + (1 - tf_alpha)*x[2])
-        return result_lst[:k]
-
-    
     # FIXED
-    def query_results_lc_naive(self, query_string, k = 10, bigrams = True): #lc = Linear-combination, Implicitly weighted towards TF-IDF
+    def query_results_lc_naive_custom(self, query_string, k = 10, tf_alpha = 0.5, bigrams = True, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
+        #lc = Linear-combination, Implicitly weighted towards Keyword Matching Method
+        # kw_method can either be "TFIDF" OR "BM25"
         stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+        query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+        query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
 
+        # rel_indices = []
+        answer_dict = {}
 
-        rel_indices = []
-        
         for token in query_tokens:
             if token in self.inverted_index:
-                rel_indices += list(self.inverted_index[token].keys())
-        
+                rel_indices = list(set(self.inverted_index[token].keys()))
+
+                for rel_i in rel_indices:
+                    if rel_i not in answer_dict:
+                        answer_dict[rel_i] = [0,cosine_sim(query_embedding[0], self.tsed_DF["embeddings"][rel_i])]
+                    tf = self.inverted_index[token][rel_i][0] / self.inverted_index[token][rel_i][1]
+                    df = len(self.inverted_index[token])
+                    idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                    if kw_method == "TFIDF":
+                        answer_dict[rel_i][0] += tf * idf
+                    else: #kw_method == "BM25"
+                        bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[token][rel_i][1] / self.bm_avg_DL)))
+                        answer_dict[rel_i][0] += bm_comp * idf
+
         if bigrams:
             bigram_lst = list(ngrams(query_tokens, 2))
             for bigram in bigram_lst:
                 if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO")
-                    query_tokens.append(bigram)
-                    rel_indices += list(self.inverted_index[bigram].keys())
-        
-        rel_indices = set(rel_indices)
+                    # print("HELLOOOOOOOOOOO", bigram, self.inverted_index[bigram])
+                    rel_indices = list(set(self.inverted_index[bigram].keys()))
+                    for rel_i in rel_indices:
+                        if rel_i not in answer_dict:
+                            answer_dict[rel_i] = [0,cosine_sim(query_embedding[0], self.tsed_DF["embeddings"][rel_i])]
+                        tf = self.inverted_index[bigram][rel_i][0] / self.inverted_index[bigram][rel_i][1]
+                        df = len(self.inverted_index[bigram])
+                        idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                        
+                        if kw_method == "TFIDF":
+                            answer_dict[rel_i][0] += 2 * tf * idf
+                        else:
+                            bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[bigram][rel_i][1] / self.bm_avg_DL)))
+                            answer_dict[rel_i][0] += 2 * bm_comp * idf
 
-        query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
-        # len(query_embedding[0])
-        # len(tsed_DF["embeddings"][0])
-        
-        result_lst = []
-        for i in rel_indices:
-            tf_score = 0
-            for token in query_tokens:
-                if (i, token) in self.tf_idf:
-                    if type(token) != str:
-                        tf_score += 2 * (self.tf_idf[(i, token)])
-                    else:
-                        tf_score += (self.tf_idf[(i, token)])
-
-            result_lst.append([i, tf_score, cosine_sim(self.tsed_DF["embeddings"][i], query_embedding[0])])
-        
-        result_lst.sort(reverse=True, key = lambda x: 0.5 * x[1] + 0.5*x[2])
+        result_lst = [[a,b] for (a,b) in answer_dict.items()]
+        result_lst.sort(reverse=True, key = lambda x: x[1][0] * tf_alpha + x[1][1] * (1-tf_alpha))
+        # print(result_lst[:k])
         return result_lst[:k]
-
+        
     # FIXED
     def query_results_tfidf(self, query_string, k = 10, bigrams = False): #tf-idf JUST TF-IDF
-
         stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+        query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
 
         rel_indices = []
-        
+        answer_dict = {}
+
         for token in query_tokens:
             if token in self.inverted_index:
-                rel_indices += list(self.inverted_index[token].keys())
+                rel_indices = list(set(self.inverted_index[token].keys()))
+
+                for rel_i in rel_indices:
+                    if rel_i not in answer_dict:
+                        answer_dict[rel_i] = 0
+                    tf = self.inverted_index[token][rel_i][0] / self.inverted_index[token][rel_i][1]
+                    df = len(self.inverted_index[token])
+                    idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                    answer_dict[rel_i] += tf * idf
 
         if bigrams:
             bigram_lst = list(ngrams(query_tokens, 2))
             for bigram in bigram_lst:
                 if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO")
-                    query_tokens.append(bigram)
-                    rel_indices += list(self.inverted_index[bigram].keys())
-        
-        rel_indices = set(rel_indices)
+                    # print("HELLOOOOOOOOOOO", bigram, self.inverted_index[bigram])
+                    rel_indices = list(set(self.inverted_index[bigram].keys()))
+                    for rel_i in rel_indices:
+                        if rel_i not in answer_dict:
+                            answer_dict[rel_i] = 0
+                        tf = self.inverted_index[bigram][rel_i][0] / self.inverted_index[bigram][rel_i][1]
+                        df = len(self.inverted_index[bigram])
+                        idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                        # print(2 * tf * idf)
+                        answer_dict[rel_i] += 2 * tf * idf
 
-        result_lst = []
-        for i in rel_indices:
-            tf_score = 0
-            for token in query_tokens:
-                
-                if (i, token) in self.tf_idf:
-                    if type(token) != str:
-                        tf_score += 2 * (self.tf_idf[(i, token)])
-                    
-                    #if you comment out the else portion, it only checks bigrams lol
-                    # else:
-                    #     tf_score += (self.tf_idf[(i, token)])
-            
-            result_lst.append([i, tf_score])
-        
+        result_lst = [(a,b) for (a,b) in answer_dict.items()]
         result_lst.sort(reverse=True, key = lambda x: x[1])
         return result_lst[:k]
     
-    # Don't need to fix
-    def query_results_embed(self, query_string, k = 10): #tf-idf JUST TF-IDF
+    # FIXED
+    def query_results_BM25(self, query_string, k = 10, bm_k = 1.2, bm_b = 0.75, bigrams = False): #tf-idf JUST TF-IDF
+        stop_words = set(stopwords.words('english'))
+        query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+
+        rel_indices = []
+        answer_dict = {}
+
+        for token in query_tokens:
+            if token in self.inverted_index:
+                rel_indices = list(set(self.inverted_index[token].keys()))
+
+                for rel_i in rel_indices:
+                    if rel_i not in answer_dict:
+                        answer_dict[rel_i] = 0
+                    tf = self.inverted_index[token][rel_i][0] / self.inverted_index[token][rel_i][1]
+                    df = len(self.inverted_index[token])
+                    bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[token][rel_i][1] / self.bm_avg_DL)))
+
+                    idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                    answer_dict[rel_i] += bm_comp * idf
+
+        if bigrams:
+            bigram_lst = list(ngrams(query_tokens, 2))
+            for bigram in bigram_lst:
+                if bigram in self.inverted_index:
+                    # print("HELLOOOOOOOOOOO", bigram, self.inverted_index[bigram])
+                    rel_indices = list(set(self.inverted_index[bigram].keys()))
+                    for rel_i in rel_indices:
+                        if rel_i not in answer_dict:
+                            answer_dict[rel_i] = 0
+                        tf = self.inverted_index[bigram][rel_i][0] / self.inverted_index[bigram][rel_i][1]
+                        df = len(self.inverted_index[bigram])
+                        idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                        bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[bigram][rel_i][1] / self.bm_avg_DL)))
+                        answer_dict[rel_i] += 2 * bm_comp * idf
+
+        result_lst = [(a,b) for (a,b) in answer_dict.items()]
+        result_lst.sort(reverse=True, key = lambda x: x[1])
+        return result_lst[:k]
+
+    # FIXED
+    def query_results_embed(self, query_string, k = 10): #just embed faiss
 
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         desc_scores, desc_results = self.embed_dataset.search("embeddings", query_embedding, k)
@@ -456,61 +470,65 @@ class searchmodel:
         return result_lst[:k]
 
     # FIXED
-    def query_results_lc_norm(self, query_string, k = 10, bigrams = False): #lc = normalize tf-idf score so that and cosine are all between 0-1 and so will the final result
-        # query_tokens = query_string.split()
+    def query_results_lc_norm(self, query_string, k = 10, bigrams = False, tf_alpha = 0.5,kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
+        #lc = normalize keyword matching score so that and cosine are all between 0-1 and so will the final result
         stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+        query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+        query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
 
-        rel_indices = []
-        
+        # rel_indices = []
+        answer_dict = {}
+
         for token in query_tokens:
             if token in self.inverted_index:
-                rel_indices += list(self.inverted_index[token].keys())
-        
+                rel_indices = list(set(self.inverted_index[token].keys()))
+
+                for rel_i in rel_indices:
+                    if rel_i not in answer_dict:
+                        answer_dict[rel_i] = [0,cosine_sim(query_embedding[0], self.tsed_DF["embeddings"][rel_i])]
+                    tf = self.inverted_index[token][rel_i][0] / self.inverted_index[token][rel_i][1]
+                    df = len(self.inverted_index[token])
+                    idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+
+                    if kw_method == "TFIDF":
+                        answer_dict[rel_i][0] += tf * idf
+                    else:
+                        bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[token][rel_i][1] / self.bm_avg_DL)))
+                        answer_dict[rel_i][0] += bm_comp * idf
+
         if bigrams:
             bigram_lst = list(ngrams(query_tokens, 2))
             for bigram in bigram_lst:
                 if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO")
-                    query_tokens.append(bigram)
-                    rel_indices += list(self.inverted_index[bigram].keys())
+                    # print("HELLOOOOOOOOOOO", bigram, self.inverted_index[bigram])
+                    rel_indices = list(set(self.inverted_index[bigram].keys()))
+                    for rel_i in rel_indices:
+                        if rel_i not in answer_dict:
+                            answer_dict[rel_i] = [0,cosine_sim(query_embedding[0], self.tsed_DF["embeddings"][rel_i])]
+                        tf = self.inverted_index[bigram][rel_i][0] / self.inverted_index[bigram][rel_i][1]
+                        df = len(self.inverted_index[bigram])
+                        idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                        
+                        if kw_method == "TFIDF":
+                            answer_dict[rel_i][0] += 2 * tf * idf
+                        else:
+                            bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[bigram][rel_i][1] / self.bm_avg_DL)))
+                            answer_dict[rel_i][0] += 2 * bm_comp * idf
+
+        result_lst = [[a,b] for (a,b) in answer_dict.items()]
+
         
-        rel_indices = set(rel_indices)
-
-        query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
-
-        result_lst = []
-        for i in rel_indices:
-            tf_score = 0
-            for token in query_tokens:
-                
-                if (i, token) in self.tf_idf:
-                    if type(token) != str:
-                        tf_score += 2 * (self.tf_idf[(i, token)])
-                    else:
-                        tf_score += (self.tf_idf[(i, token)])
-                # try:
-                #     tf_score += (self.tf_idf[(i, token)])
-                # except: continue #this is bad, make sure this isn't the play
-            # print(i)
-
-            result_lst.append([i, tf_score, cosine_sim(self.tsed_DF["embeddings"][i], query_embedding[0])])
-        
-        #normalize tf_score
         if len(result_lst) > 0:
-            tf_scores = [x[1] for x in result_lst]
-            # print(tf_scores)
-            max_tf = max(tf_scores)
-            if max_tf > 0:
-                tf_scores = [x / max_tf for x in tf_scores]
-                for i, tf_s in enumerate(tf_scores):
-                    result_lst[i][1] = tf_s
-        
-        result_lst.sort(reverse=True, key = lambda x: 0.5 * x[1] + 0.5*x[2])
-        return result_lst[:k]
+            max_tf_idf_score = max([x[1][0] for x in result_lst])
+        else: 
+            max_tf_idf_score = 1
 
+        result_lst.sort(reverse=True, key = lambda x: x[1][0] * (tf_alpha) / max_tf_idf_score + x[1][1] * (1 - tf_alpha))
+        # print(result_lst[:k])
+        return result_lst[:k]
+        
     # FIXED
-    def query_results_odds_evens(self, query_string, k = 10, bigrams = False): #do TF-IDF, do FAISS. Take the top k/2 for both. Make sure no overlap
+    def query_results_odds_evens(self, query_string, k = 10, bigrams = False, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): #do TF-IDF, do FAISS. Take the top k/2 for both. Make sure no overlap
         #So long as return result_lst[0] is the index. It'll be chill
 
         #Embedding portion
@@ -525,36 +543,46 @@ class searchmodel:
         #TF-IDF Portion
 
         stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
+        query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
 
         rel_indices = []
-        
+        answer_dict = {}
+
         for token in query_tokens:
             if token in self.inverted_index:
-                rel_indices += list(self.inverted_index[token].keys())
-        
+                rel_indices = list(set(self.inverted_index[token].keys()))
+
+                for rel_i in rel_indices:
+                    if rel_i not in answer_dict:
+                        answer_dict[rel_i] = 0
+                    tf = self.inverted_index[token][rel_i][0] / self.inverted_index[token][rel_i][1]
+                    df = len(self.inverted_index[token])
+                    idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                    if kw_method == "TFIDF":
+                        answer_dict[rel_i] += tf * idf
+                    else: 
+                        bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[token][rel_i][1] / self.bm_avg_DL)))
+                        answer_dict[rel_i] += bm_comp * idf
+
         if bigrams:
             bigram_lst = list(ngrams(query_tokens, 2))
             for bigram in bigram_lst:
                 if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO")
-                    query_tokens.append(bigram)
-                    rel_indices += list(self.inverted_index[bigram].keys())
+                   
+                    rel_indices = list(set(self.inverted_index[bigram].keys()))
+                    for rel_i in rel_indices:
+                        if rel_i not in answer_dict:
+                            answer_dict[rel_i] = 0
+                        tf = self.inverted_index[bigram][rel_i][0] / self.inverted_index[bigram][rel_i][1]
+                        df = len(self.inverted_index[bigram])
+                        idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+                        if kw_method == "TFIDF":
+                            answer_dict[rel_i] += 2 * tf * idf
+                        else:
+                            bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[bigram][rel_i][1] / self.bm_avg_DL)))
+                            answer_dict[rel_i] += 2 * bm_comp * idf
 
-        rel_indices = set(rel_indices)
-
-        result_lst_tfidf = []
-        for i in rel_indices:
-            tf_score = 0
-            for token in query_tokens:
-                if (i, token) in self.tf_idf:
-                    if type(token) != str:
-                        tf_score += 2 * (self.tf_idf[(i, token)])
-                    else:
-                        tf_score += (self.tf_idf[(i, token)])
-
-            result_lst_tfidf.append([i, tf_score])
-        
+        result_lst_tfidf = [(a,b) for (a,b) in answer_dict.items()]
         result_lst_tfidf.sort(reverse=True, key = lambda x: x[1])
         tfidf_top_results = result_lst_tfidf
 
@@ -583,7 +611,8 @@ class searchmodel:
         # print(result_lst)
         return result_lst
 
-    def query_results_faiss_tf(self, query_string, k = 10, bigrams = False):
+    # NEED TO FIX
+    def query_results_faiss_kw(self, query_string, k = 10, bigrams = False, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75):
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         _, desc_results = self.embed_dataset.search("embeddings", query_embedding, k)
 
@@ -601,22 +630,27 @@ class searchmodel:
         
         result_lst = []
         for i in desc_results:
-            tf_score = 0
+            kw_score = 0
             for token in query_tokens:
                 
-                if (i, token) in self.tf_idf:
-                    if type(token) != str:
-                        tf_score += 2 * (self.tf_idf[(i, token)])
+                if token in self.inverted_index and i in self.inverted_index[token]:
+                    tf = self.inverted_index[token][i][0] / self.inverted_index[token][i][0]
+                    df = len(self.inverted_index[token])
+                    idf = np.log((len(self.tsed_DF) + 1) / (df + 1))
+
+                    if kw_method == "TFIDF":
+                        kw_score += tf * idf
                     else:
-                        tf_score += (self.tf_idf[(i, token)])
+                        bm_comp = (tf * (bm_k + 1)) / (tf + bm_k * (1 - bm_b + bm_b * (self.inverted_index[token][i][1] / self.bm_avg_DL)))
+                        kw_score += bm_comp * idf
             
-            result_lst.append([i, tf_score])
+            result_lst.append([i, kw_score])
         
         result_lst.sort(reverse=True, key = lambda x: x[1])
         # print(result_lst)
         return result_lst[:k]
 
-
+    # FIXED
     def query_results_faiss_cos(self, query_string, k = 10, bigrams = False):
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         _, desc_results = self.embed_dataset.search("embeddings", query_embedding, 2 * k)
@@ -666,7 +700,7 @@ class searchmodel:
 
         for i, query in enumerate(q_lst):
             # print(i)
-            fbm_lst = self.query_results_tfidf(query, results_per_query, bigrams=True) #CHANGE THIS LINE TO CHECK DIFFERENT METHODS. FALSE = NO BIGRAMS
+            fbm_lst = self.query_results_faiss_kw(query, results_per_query, bigrams=True, kw_method="BM25") #CHANGE THIS LINE TO CHECK DIFFERENT METHODS. FALSE = NO BIGRAMS
             query_lst += [query for j in range(len(fbm_lst))]
             
             for lst in fbm_lst:
