@@ -93,6 +93,8 @@ In the test.ipnyb Jupyter Notebook file, there are cells which specifically save
 
 We utilized pre-existing code from many people. Specifically code from: the CodeSearchNet (https://github.com/github/CodeSearchNet), HuggingFace tutorials (https://huggingface.co/learn/nlp-course/chapter5/6?fw=pt) and William Scott (https://github.com/williamscott701/Information-Retrieval/tree/master/2.%20TF-IDF%20Ranking%20-%20Cosine%20Similarity%2C%20Matching%20Score)
 
+https://medium.com/@evertongomede/understanding-the-bm25-ranking-algorithm-19f6d45c6ce Was instrumental in our own implementation of BM25.
+
 There are comments above specific functions/code cells/python files crediting the respective authors when using their code. 
 
 ### Disclaimer:
