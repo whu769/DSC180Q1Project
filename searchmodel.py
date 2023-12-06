@@ -1,3 +1,14 @@
+"""searchmodel Class
+
+This class trains a search model object
+
+It either trains or loads pre-existing embedding models or inverted indices.
+The model then saves newly made inverted indices and embedding models to 
+speed up the process. 
+
+The models has various querying methods from FAISS similarity scoring, to only TF-IDF
+
+"""
 import pandas as pd
 import numpy as np
 import pickle
@@ -17,23 +28,30 @@ from nltk.stem import RegexpStemmer
 from nltk.util import ngrams
 from nltk.corpus import stopwords
 
-# function to clean the code tokens. Super rudimentary, 
-# as of right now, we're just taking rid of the single punctuation
-def clean_code_tokens(lst):
-    result = string.punctuation 
-    new_lst = [] 
-    for character in lst:
-        if character in result:
-            continue
-        else:
-            new_lst.append(character)
-    return new_lst
-
-#From Hugging Face Tutorials
+#From HuggingFace Tutorials
 def cls_pooling(model_output):
+    """
+    Function that helps in creating the semantic search embeddings
+    Code was taken from HuggingFace tutorials
+
+    Parameters
+    ----------
+    model_output : str
+        The file location of the answers csv file
+    """
     return model_output.last_hidden_state[:, 0]
 
+#From HuggingFace Tutorials
 def get_embeddings(text_list):
+    """
+    Function that obtains the semantic search embeddings
+    given a list of strings comprising of the tokens
+
+    Parameters
+    ----------
+    text_list : list
+        The list of string tokens to obtain the embeddings
+    """
     encoded_input = tokenizer(
         text_list, padding=True, truncation=True, return_tensors="pt"
     )
@@ -41,15 +59,23 @@ def get_embeddings(text_list):
     model_output = trained_model(**encoded_input)
     return cls_pooling(model_output)
 
-#Function for cosine_similarity. #Look into np.cos Annoy FAISS. look into applying and vectorizing
+#Function for cosine_similarity. 
 def cosine_sim(a, b):
+    """
+    Class Function that calculates the cosine similarities of two vectors
+
+    Parameters
+    ----------
+    a : list
+        The list vectors to be compared 
+    """
     return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
 
 
-# Testing if the pytorch GPU functions work
-print(torch.backends.cudnn.enabled)
-print(torch.cuda.is_available()) #We have GPU on deck and ready
-print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
+# Uncomment this portion to check for PyTorch GPU Availability
+# print(torch.backends.cudnn.enabled)
+# print(torch.cuda.is_available()) 
+# print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
 
 
 # device = torch.device("cuda")
@@ -93,53 +119,6 @@ class searchmodel:
             # self.make_inverted_index_docs()
             self.make_inverted_index_docs_bigrams()
             # self.make_inverted_index_docs_bigrams_only()
-                
-       
-        # Can delete all this lmao
-        # stop_words = set(stopwords.words('english'))
-        # self.tsed_DF["clean_code_tokens"] =  self.tsed_DF["func_code_tokens"].apply(clean_code_tokens)
-        # self.tsed_DF["func_doc_tokens"] = self.tsed_DF["func_documentation_string"].apply(lambda x: rgx_tokenizer.tokenize(x))
-        # self.tsed_DF["func_doc_stem_tokens"] = self.tsed_DF["func_doc_tokens"].apply(lambda x: [st.stem(word) for word in x if word not in stop_words])
-        # self.create_tfidf(bigrams=True) # SWITCH THIS BACK
-        # self.create_tfidf_bigrams_only(bigrams=True) #SWITCH TO TRUE FOR BIGRAMS
-
-    #Legacy --> Get rid of soon
-    def make_inverted_index_code(self):
-        tsed_DF = self.embed_dataset.to_pandas()
-
-        
-        # creating a column of "clean" code tokens
-        # There's many many issues with this strategy
-        tsed_DF["clean_code_tokens"] =  tsed_DF["func_code_tokens"].apply(clean_code_tokens)
-
-        # Creates list of documents
-        # documents = tsed_DF["clean_code_tokens"].to_dict()
-
-        # Compiles a list of the words 
-        all_words = []
-        for i in list(tsed_DF["clean_code_tokens"].to_dict().values()):
-            all_words += i
-
-        #convert all words to a set, eliminates, duplicates
-        all_words = list(set(all_words)) #Get rid of all repeats
-        # all_words
-
-        inverted_index = {}
-        for i in range(len(tsed_DF)):
-            token_counter = Counter(tsed_DF.iloc[i]["clean_code_tokens"])
-
-            for token in token_counter:
-                if token not in inverted_index:
-                    inverted_index[token] = {}
-                inverted_index[token][i] = token_counter[token]
-        
-        #Pickle afterwards
-        with open(self.file_paths["inverted_index"], 'wb') as f:  # open a text file
-            pickle.dump(inverted_index, f) # serialize the list
-            f.close()
-        
-        self.inverted_index = inverted_index
-        self.tsed_DF = tsed_DF
 
     # No bigrams
     def make_inverted_index_docs(self):
@@ -255,6 +234,7 @@ class searchmodel:
         self.inverted_index = inverted_index
         self.tsed_DF = tsed_DF
 
+
     def create_tfidf(self, column = "func_doc_stem_tokens", bigrams = False):
         num_rows = len(self.tsed_DF)
 
@@ -280,6 +260,7 @@ class searchmodel:
                 tf_idf[i, token] = tf * idf
         self.tf_idf = tf_idf
     
+
     def create_tfidf_bigrams_only(self, column = "func_doc_stem_tokens", bigrams = False):
         num_rows = len(self.tsed_DF)
 
@@ -697,16 +678,20 @@ class searchmodel:
         lang_lst = []
         func_code_url_lst = []
         query_lst = []
+        func_docs_lst = []
 
         for i, query in enumerate(q_lst):
             # print(i)
-            fbm_lst = self.query_results_faiss_kw(query, results_per_query, bigrams=True, kw_method="BM25") #CHANGE THIS LINE TO CHECK DIFFERENT METHODS. FALSE = NO BIGRAMS
+            fbm_lst = self.query_results_lc_naive_custom(query, results_per_query, kw_method="BM25", tf_alpha=0.75,bigrams=True) #CHANGE THIS LINE TO CHECK DIFFERENT METHODS. FALSE = NO BIGRAMS
             query_lst += [query for j in range(len(fbm_lst))]
             
             for lst in fbm_lst:
                 # print(lst)
                 lang_lst.append(self.tsed_DF.iloc[lst[0]]["language"])
                 func_code_url_lst.append(self.tsed_DF.iloc[lst[0]]["func_code_url"])
+                func_docs_lst.append(self.tsed_DF.iloc[lst[0]]['func_documentation_string'])
+                # func_names_lst.append(self.tsed_DF.iloc[lst[0]]['func_name'])
 
-        prediction_df = pd.DataFrame({'language' : lang_lst, 'url': func_code_url_lst, "query" : query_lst})
+
+        prediction_df = pd.DataFrame({'language' : lang_lst, 'url': func_code_url_lst, "query" : query_lst, "documentation" : func_docs_lst})
         return prediction_df

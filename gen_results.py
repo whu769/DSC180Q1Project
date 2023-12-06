@@ -13,7 +13,6 @@ functions:
 """
 import pandas as pd
 import numpy as np
-import relevanceeval
 
 
 def load_csv(filepath):
@@ -52,6 +51,7 @@ def create_lj_answers_NEW(filePathPred, filePathAnswer):
     queries_with_annotations = list(ans_in_res_DF["Query"].unique())
     ndcgs = []
     empty_res = 0
+    rel_queries = []
     for qwa in queries_with_annotations:
         df_query = res_annot_merged[res_annot_merged["query"] == qwa]
         rel_lst = df_query["Relevance"].to_list()
@@ -69,7 +69,9 @@ def create_lj_answers_NEW(filePathPred, filePathAnswer):
             ndcgs.append(0)
             empty_res += 1
             # print(f"For query: {qwa}, no relevant results")
-        else: ndcgs.append(dcg / idcg)
-    print(f"For the predictions, a total of {len(ndcgs)} queries were matched. \
-          {empty_res} of the Queries had no relevant results")
+        else: 
+            rel_queries.append(qwa)
+            ndcgs.append(dcg / idcg)
+    print(f"For the predictions, a total of {len(ndcgs)} queries were matched. {empty_res} of the Queries had no relevant results")
+    print(rel_queries)
     print(f"NDCG: {np.mean(ndcgs)}")

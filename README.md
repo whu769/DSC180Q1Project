@@ -95,6 +95,8 @@ We utilized pre-existing code from many people. Specifically code from: the Code
 
 https://medium.com/@evertongomede/understanding-the-bm25-ranking-algorithm-19f6d45c6ce Was instrumental in our own implementation of BM25.
 
+https://medium.com/@readsumant/understanding-ndcg-as-a-metric-for-your-recomendation-system-5cd012fb3397 Was also helpful for our implmentation of NDCG.
+
 There are comments above specific functions/code cells/python files crediting the respective authors when using their code. 
 
 ### Disclaimer:
