@@ -76,11 +76,13 @@ You will need to download the CodeSearchNet data from HuggingFace though.
 
 ## Accessing Data
 
+Within the Dataset folder will be a Jupyter Notebook file that will have cells that will allow you to choose the specific CodeSearchDataset. It will download and save it in a CodeSearchCorpus/ folder within the Dataset folder. 
+
 This project utilizes the CodeSearchNet dataset. To access it, specifically the 2M annotated rows of data, we utilize HuggingFace. After importing HuggingFaces' datasets package, run ```load_dataset("code_search_net", "all")```. 
 
 #### Disclaimer when loading data on DSMLP
 I advise caution when running ```load_dataset("code_search_net", "all")``` as my datahub instance crashed and I had to clear the cache before being able to access it again. I recommend loading a smaller subset, possibly for just all the Python functions run 
-```load_dataset("code_search_net", "python")```. This will load a smaller dataset and hopefully not crash your datahub.
+```load_dataset("code_search_net", "python")```. This will load a smaller dataset and hopefully not crash your datahub (I've crashed mine a couple times now).
 
 *** 
 Within the Dataset folder, there is also a Testing folder which contains two files: annotationStore.csv, annotationStore_UNIQUE.csv and queries.csv
@@ -97,13 +99,14 @@ In the test.ipnyb Jupyter Notebook file, there are cells which specifically save
 
 # Code Credit
 
-We utilized pre-existing code from many people. Specifically code from: the CodeSearchNet (https://github.com/github/CodeSearchNet), HuggingFace tutorials (https://huggingface.co/learn/nlp-course/chapter5/6?fw=pt) and William Scott (https://github.com/williamscott701/Information-Retrieval/tree/master/2.%20TF-IDF%20Ranking%20-%20Cosine%20Similarity%2C%20Matching%20Score)
-
-https://medium.com/@evertongomede/understanding-the-bm25-ranking-algorithm-19f6d45c6ce Was instrumental in our own implementation of BM25.
-
-https://medium.com/@readsumant/understanding-ndcg-as-a-metric-for-your-recomendation-system-5cd012fb3397 Was also helpful for our implmentation of NDCG.
+We utilized pre-existing code from many people. Specifically code from: 
+* The CodeSearchNet (https://github.com/github/CodeSearchNet) 
+* HuggingFace tutorials (https://huggingface.co/learn/nlp-course/chapter5/6?fw=pt)
+* William Scott (https://github.com/williamscott701/Information-Retrieval/tree/master/2.%20TF-IDF%20Ranking%20-%20Cosine%20Similarity%2C%20Matching%20Score)
+* https://medium.com/@evertongomede/understanding-the-bm25-ranking-algorithm-19f6d45c6ce Was instrumental in our own implementation of BM25.
+* https://medium.com/@readsumant/understanding-ndcg-as-a-metric-for-your-recomendation-system-5cd012fb3397 Was also helpful for our implmentation and understanding of NDCG.
 
 There are comments above specific functions/code cells/python files crediting the respective authors when using their code. 
 
-A huge thanks to our mentor Colin Jemmott for helping us with everything from optimizing code to suggestions to improving our project!
+Most importantly, a HUGE thanks to our mentor Colin Jemmott for helping us with everything from optimizing code to suggestions to improving our project!
 
