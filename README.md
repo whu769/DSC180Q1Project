@@ -7,8 +7,7 @@ William Hu (wyhu@ucsd.edu)
 
 # Introduction
 
-The goal of this project is to explore and build a search engine that can deliver good quantitative and qualitative results to code queries. We're seeking to match or surpass the NDCG baseline score of 0.337 and obtain 
-results we deem qualitatively accurate.
+The goal of this project is to explore and build a search engine that can deliver good quantitative and qualitative results to code queries. We're seeking to obtain an NDCG score of over 0.2 and obtain results we deem qualitatively accurate.
 
 ### Architecture/Steps:
 First our search engine will take in a natural language query and K desired results the user wants returned, tokenize it in both the semantic search embeddings space and the nlp tokenization vector, then it will go through various
@@ -94,6 +93,8 @@ In the test.ipnyb Jupyter Notebook file, there are cells which specifically save
 We utilized pre-existing code from many people. Specifically code from: the CodeSearchNet (https://github.com/github/CodeSearchNet), HuggingFace tutorials (https://huggingface.co/learn/nlp-course/chapter5/6?fw=pt) and William Scott (https://github.com/williamscott701/Information-Retrieval/tree/master/2.%20TF-IDF%20Ranking%20-%20Cosine%20Similarity%2C%20Matching%20Score)
 
 https://medium.com/@evertongomede/understanding-the-bm25-ranking-algorithm-19f6d45c6ce Was instrumental in our own implementation of BM25.
+
+https://medium.com/@readsumant/understanding-ndcg-as-a-metric-for-your-recomendation-system-5cd012fb3397 Was also helpful for our implmentation of NDCG.
 
 There are comments above specific functions/code cells/python files crediting the respective authors when using their code. 
 

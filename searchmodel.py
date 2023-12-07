@@ -1,3 +1,14 @@
+"""searchmodel Class
+
+This class trains a search model object
+
+It either trains or loads pre-existing embedding models or inverted indices.
+The model then saves newly made inverted indices and embedding models to 
+speed up the process. 
+
+The models has various querying methods from FAISS similarity scoring, to only TF-IDF
+
+"""
 import pandas as pd
 import numpy as np
 import pickle
@@ -17,23 +28,32 @@ from nltk.stem import RegexpStemmer
 from nltk.util import ngrams
 from nltk.corpus import stopwords
 
-# function to clean the code tokens. Super rudimentary, 
-# as of right now, we're just taking rid of the single punctuation
-def clean_code_tokens(lst):
-    result = string.punctuation 
-    new_lst = [] 
-    for character in lst:
-        if character in result:
-            continue
-        else:
-            new_lst.append(character)
-    return new_lst
+# CLASS FUNCTIONS BELOW
 
-#From Hugging Face Tutorials
+#From HuggingFace Tutorials
 def cls_pooling(model_output):
+    """
+    Function that helps in creating the semantic search embeddings
+    Code was taken from HuggingFace tutorials
+
+    Parameters
+    ----------
+    model_output : str
+        The file location of the answers csv file
+    """
     return model_output.last_hidden_state[:, 0]
 
+#From HuggingFace Tutorials
 def get_embeddings(text_list):
+    """
+    Function that obtains the semantic search embeddings
+    given a list of strings comprising of the tokens
+
+    Parameters
+    ----------
+    text_list : list
+        The list of string tokens to obtain the embeddings
+    """
     encoded_input = tokenizer(
         text_list, padding=True, truncation=True, return_tensors="pt"
     )
@@ -41,40 +61,170 @@ def get_embeddings(text_list):
     model_output = trained_model(**encoded_input)
     return cls_pooling(model_output)
 
-#Function for cosine_similarity. #Look into np.cos Annoy FAISS. look into applying and vectorizing
+#Function for cosine_similarity. 
 def cosine_sim(a, b):
+    """
+    Class Function that calculates the cosine similarities of two vectors
+
+    Parameters
+    ----------
+    a : list
+        The list vectors to be compared 
+    """
     return np.dot(a, b)/(np.linalg.norm(a)*np.linalg.norm(b))
 
 
-# Testing if the pytorch GPU functions work
-print(torch.backends.cudnn.enabled)
-print(torch.cuda.is_available()) #We have GPU on deck and ready
-print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
+# Uncomment this portion to check for PyTorch GPU Availability
+# print(torch.backends.cudnn.enabled)
+# print(torch.cuda.is_available()) 
+# print(f"CUDA device: {torch.cuda.get_device_name(torch.cuda.current_device())}")
 
 
-# device = torch.device("cuda")
-device = ("cuda" if torch.cuda.is_available() else "cpu")
+# Code to setup the pytorch functionality
+device = ("cuda" if torch.cuda.is_available() else "cpu") #Chooses cuda if a cuda gpu is available
 hg_model = "huggingface/CodeBERTa-small-v1" #"sentence-transformers/multi-qa-mpnet-base-dot-v1"
-model_ckpt = hg_model #Can/Should test different models
+model_ckpt = hg_model
 tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
 trained_model = AutoModel.from_pretrained(model_ckpt)
-trained_model.to(device)
+trained_model.to(device) #moves the model to the proper device (cpu or cuda)
 
 #Tokenizer initialization
 st = RegexpStemmer('ing$|s$|e$|able$', min=4)
 rgx_tokenizer = RegexpTokenizer(r'\w+')
 
 class searchmodel:
+    """
+    searchmodel class
 
-    def __init__(self, data, file_paths, loadEmbed = False, loadTF = False):
+    Class Attributes
+    ----------
+    self.data: HuggingFace Datasets
+        The CodeSearchNet data (from HuggingFace Dataset)
+    
+    self.loadEmbed: bool
+        Boolean that states whether the embeddings data can be loaded or not
+    
+    self.loadTF: bool
+        Boolean that states whether the inverted_index data can be loaded or not
+    
+    self.file_paths: dict
+        A dict that has two keys: inverted_index and embeddings_dataset. It points to where pre-trained
+        pickle objects exist OR where the trained objects should be pickled
+
+    self.inverted_index: dict
+        A dictionary that is the inverted index.
+
+    self.embed_dataset: HuggingFace Datasets
+        Dataset containing the semantic embeddings.
+    
+    self.kw_method: str
+            String, either "TFIDF" or "BM25" that sets the key term matching algorithm.
+        
+    self.tf_alpha: float
+        Float value between [0, 1] that dictates the linear combination weights of the term frequency
+        with the semantic similarity.
+    
+    self.query_function: str
+        String that represents the method of querying for results (Ex: tfidf, bm25, linear combination)
+
+    self.bigrams: bool
+        Boolean representing the use of bigrams or not in the inverted index and search algorithm
+
+    Methods
+    ----------
+    make_inverted_index_docs:
+        A function to make an inverted index without bigram support. (The first implementation and may be outdated)
+    
+    make_inverted_index_docs_bigrams:
+        A function to make an inverted index with bigram support. Used as the primary inverted_index creation method
+    
+    make_inverted_index_docs_bigrams_only:
+        An experimental function to make an inverted index comprising exclusively of bigrams. Was made as a test. Not 
+        used normally.
+    
+    make_embeddings:
+        Function to create the semantic embeddings based off the given pre-trained model. It will also be saved as a pickle
+        file
+    
+    create_results:
+        Function that takes in the 99 test queries and returns it as a Pandas DataFrame
+    
+    query_results_lc_naive_custom:
+        A method of querying for results. It utilizes a linear combination of keyword matching and embedding cosine values.
+        It is considered "naive" as it doesn't normalize and as so the keyword portion has more weight naturally.
+        You can set the weights for the linear combination from 0-1.
+    
+    query_results_tfidf:
+        Method of querying for results using only the tf-idf method from the inverted index
+    
+    query_results_BM25:
+        Method of querying for results using only BM25 and the inverted index's information
+    
+    query_results_lc_norm:
+        A method of querying for results using a linear combination of a keyword matching algorithm
+        (either BM25 or TFIDF) and semantic embeddings cosine similarity. The keyword matching however 
+        is normalized to 0-1 by dividing all scores by the max.
+    
+    query_results_odds_evens:
+        A method of querying for the results using both keyword matching and semantic embeddings FAISS. The
+        top results are then put in alternating order (semantic results are evens, keyword results are odds)
+    
+    query_results_faiss_kw:
+        A method of querying results by first using FAISS on the semantic embeddings and then ranking 
+        the returned results with a keyword matching algorithm.
+    
+    query_results_faiss_cos:
+        A method of querying results using purely semantic embeddings by first getting the top nearest 
+        functions with FAISS, then calculating the cosine similarity of those.
+    """
+
+    def __init__(self, data, file_paths, query_function, kw_method, tf_alpha, bigrams,loadEmbed = False, loadTF = False):
+        """ __init__ method
+        Initializes a searchmodel object
+
+        Parameters
+        ----------
+        data: HuggingFace Dataset
+            The HuggingFace Dataset which may or may not be a subset of the overall CodeSearchNet data
+    
+        file_paths: dict
+            A dict that has two keys: inverted_index and embeddings_dataset. It points to where pre-trained
+            pickle objects exist OR where the trained objects should be pickled
+        
+        loadEmbed: bool
+            A boolean that is True/False depending on whether an embedding model exists and doesn't need to 
+            be trained
+        
+        loadTF: bool
+            A boolean that is True/False depending on whether an inverted_index exists already. If False, 
+            the model will train one from the data first
+        
+        kw_method: str
+            String, either "TFIDF" or "BM25" that sets the key term matching algorithm.
+        
+        tf_alpha: float
+            Float value between [0, 1] that dictates the linear combination weights of the term frequency
+            with the semantic similarity.
+        
+        query_function: str
+            String that represents the method of querying for results (Ex: tfidf, bm25, linear combination)
+
+        bigrams: bool
+            Boolean representing the use of bigrams or not
+        """
         self.data = data
         self.loadEmbed = loadEmbed
         self.loadTF = loadTF
-        self.file_paths = file_paths #{"inverted_index" : "path_to_inverted_index", "embeddings_dataset" : "path_to_embedded_dataset"}
+        self.file_paths = file_paths
 
         self.inverted_index = None
         self.embed_dataset = None
+        self.query_function = query_function
+        self.kw_method = kw_method
+        self.tf_alpha = tf_alpha
+        self.bigrams = bigrams
 
+        #Load or make the inverted index and embed_dataset
         if loadEmbed:
             with open(file_paths["embeddings_dataset"], 'rb') as f:  # open a text file
                 self.embed_dataset = pickle.load(f) # serialize the list
@@ -83,66 +233,21 @@ class searchmodel:
             self.tsed_DF = self.embed_dataset.to_pandas()
         else:
             self.make_embeddings(self.data)
-            # self.make_inverted_index_docs()
 
         if loadTF: #if the load boolean is true, file_paths is a dictionary to load info
             with open(file_paths["inverted_index"], 'rb') as f:  # open a text file
                 self.inverted_index = pickle.load(f) # serialize the list
                 f.close()
         else:
-            # self.make_inverted_index_docs()
             self.make_inverted_index_docs_bigrams()
-            # self.make_inverted_index_docs_bigrams_only()
-                
-       
-        # Can delete all this lmao
-        # stop_words = set(stopwords.words('english'))
-        # self.tsed_DF["clean_code_tokens"] =  self.tsed_DF["func_code_tokens"].apply(clean_code_tokens)
-        # self.tsed_DF["func_doc_tokens"] = self.tsed_DF["func_documentation_string"].apply(lambda x: rgx_tokenizer.tokenize(x))
-        # self.tsed_DF["func_doc_stem_tokens"] = self.tsed_DF["func_doc_tokens"].apply(lambda x: [st.stem(word) for word in x if word not in stop_words])
-        # self.create_tfidf(bigrams=True) # SWITCH THIS BACK
-        # self.create_tfidf_bigrams_only(bigrams=True) #SWITCH TO TRUE FOR BIGRAMS
-
-    #Legacy --> Get rid of soon
-    def make_inverted_index_code(self):
-        tsed_DF = self.embed_dataset.to_pandas()
-
-        
-        # creating a column of "clean" code tokens
-        # There's many many issues with this strategy
-        tsed_DF["clean_code_tokens"] =  tsed_DF["func_code_tokens"].apply(clean_code_tokens)
-
-        # Creates list of documents
-        # documents = tsed_DF["clean_code_tokens"].to_dict()
-
-        # Compiles a list of the words 
-        all_words = []
-        for i in list(tsed_DF["clean_code_tokens"].to_dict().values()):
-            all_words += i
-
-        #convert all words to a set, eliminates, duplicates
-        all_words = list(set(all_words)) #Get rid of all repeats
-        # all_words
-
-        inverted_index = {}
-        for i in range(len(tsed_DF)):
-            token_counter = Counter(tsed_DF.iloc[i]["clean_code_tokens"])
-
-            for token in token_counter:
-                if token not in inverted_index:
-                    inverted_index[token] = {}
-                inverted_index[token][i] = token_counter[token]
-        
-        #Pickle afterwards
-        with open(self.file_paths["inverted_index"], 'wb') as f:  # open a text file
-            pickle.dump(inverted_index, f) # serialize the list
-            f.close()
-        
-        self.inverted_index = inverted_index
-        self.tsed_DF = tsed_DF
 
     # No bigrams
     def make_inverted_index_docs(self):
+        """
+        make_inverted_index_docs
+
+        Makes an inverted index based on the "func_documentation_string" of the given dataset
+        """
         # tsed_DF = self.embed_dataset.select_columns(["func_documentation_string", "embeddings"])
         stop_words = set(stopwords.words('english'))
         tsed_DF = self.embed_dataset.to_pandas()
@@ -167,7 +272,13 @@ class searchmodel:
     
     # With bigrams
     def make_inverted_index_docs_bigrams(self):
-        # tsed_DF = self.embed_dataset.select_columns(["func_documentation_string", "embeddings"])
+        """
+        make_inverted_index_docs
+
+        Makes an inverted index based on the "func_documentation_string" of the given dataset.
+        There is bigram support for this.
+        """
+
         stop_words = set(stopwords.words('english'))
         tsed_DF = self.embed_dataset.to_pandas()
         tsed_DF["func_doc_tokens"] = tsed_DF["func_documentation_string"].apply(lambda x: rgx_tokenizer.tokenize(x))
@@ -214,6 +325,12 @@ class searchmodel:
     
     # Only bigrams
     def make_inverted_index_docs_bigrams_only(self):
+        """
+        make_inverted_index_docs_bigrams_only
+
+        Makes an inverted index based on the "func_documentation_string" of the given dataset.
+        It creates an inverted index comprising ONLY OF BIGRAMS
+        """
         # tsed_DF = self.embed_dataset.select_columns(["func_documentation_string", "embeddings"])
         stop_words = set(stopwords.words('english'))
         tsed_DF = self.embed_dataset.to_pandas()
@@ -255,65 +372,19 @@ class searchmodel:
         self.inverted_index = inverted_index
         self.tsed_DF = tsed_DF
 
-    def create_tfidf(self, column = "func_doc_stem_tokens", bigrams = False):
-        num_rows = len(self.tsed_DF)
-
-        tf_idf = {}
-        for i in range(num_rows):
-        # print(i)
-            tokens = self.tsed_DF[column].iloc[i]
-            if bigrams:
-                bigram_lst_i = []
-                for bigram in list(ngrams(self.tsed_DF.iloc[i]["func_doc_stem_tokens"], 2)):
-                    if bigram in self.bigram_set:
-                        bigram_lst_i.append(bigram)
-                tokens += bigram_lst_i
-
-            counter = Counter(tokens)
-            words_count = len(tokens)
-
-            for token in set(tokens):
-                tf = counter[token] / words_count
-                df = len(self.inverted_index[token])
-                idf = np.log((num_rows + 1) / (df + 1))
-
-                tf_idf[i, token] = tf * idf
-        self.tf_idf = tf_idf
-    
-    def create_tfidf_bigrams_only(self, column = "func_doc_stem_tokens", bigrams = False):
-        num_rows = len(self.tsed_DF)
-
-        tf_idf = {}
-        for i in range(num_rows):
-        # print(i)
-            tokens = []#self.tsed_DF[column].iloc[i] Only bigrams lmao
-            if bigrams:
-                bigram_lst_i = []
-                for bigram in list(ngrams(self.tsed_DF.iloc[i][column], 2)):
-                    if bigram in self.bigram_set:
-                        bigram_lst_i.append(bigram)
-                tokens += bigram_lst_i
-
-            counter = Counter(tokens)
-            words_count = len(tokens)
-
-            for token in set(tokens):
-                tf = counter[token] / words_count
-                df = len(self.inverted_index[token])
-                idf = np.log((num_rows + 1) / (df + 1))
-
-                tf_idf[i, token] = tf * idf
-        self.tf_idf = tf_idf
-
     # Function to make embeddings. Right now only for 1 field.
     def make_embeddings(self, dataset):
-        # model_ckpt = hg_model #Can/Should test different models
-        # self.tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
-        # model = AutoModel.from_pretrained(model_ckpt)
+        """
+        make_embeddings
 
-        # Load the model to the GPU. Mine is a 3060
-        # self.device = torch.device("cuda")
-        # trained_model.to(device)
+        Method to create a HuggingFace Dataset of embeddings from the "whole_func_string" column.
+        CREDIT: Method written from HuggingFace tutorials.
+
+        Parameters
+        ----------
+        dataset: HuggingFace dataset
+            The dataset to train embeddings on
+        """
 
         dataset_embeddings = dataset.map(
             lambda x: {"embeddings": get_embeddings(x["whole_func_string"]).detach().cpu().numpy()[0]}
@@ -329,8 +400,38 @@ class searchmodel:
 
     # FIXED
     def query_results_lc_naive_custom(self, query_string, k = 10, tf_alpha = 0.5, bigrams = True, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
-        #lc = Linear-combination, Implicitly weighted towards Keyword Matching Method
-        # kw_method can either be "TFIDF" OR "BM25"
+        """
+        query_results_lc_naive_custom
+
+        A method of querying for results. It utilizes a linear combination of keyword matching and embedding cosine values.
+        It is considered "naive" as it doesn't normalize and as so the keyword portion has more weight naturally.
+        You can set the weights for the linear combination from 0-1.
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+        
+        tf_alpha: float
+            Float value from 0-1 which will set the linear combination ratio of the following equation
+            (tf_alpha) * keyword_score + (1-tf_alpha) * cosine_score(query_embeddings, embeddings)
+
+        bigrams: bool
+            Boolean determining if bigrams want to be included in the search
+        
+        kw_method: str
+            String either "TFIDF" or "BM25" that determines the keyword matching method.
+
+        bm_k: float
+            Float value that can be tuned for BM_25 calculation for saturation.
+
+        bm_b: float
+            Float value that can be tuned for BM_25 calculation for penalizing irrelevant tokens.
+        """
+        
         stop_words = set(stopwords.words('english'))
         query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
@@ -379,7 +480,23 @@ class searchmodel:
         return result_lst[:k]
         
     # FIXED
-    def query_results_tfidf(self, query_string, k = 10, bigrams = False): #tf-idf JUST TF-IDF
+    def query_results_tfidf(self, query_string, k = 10, bigrams = True): #tf-idf JUST TF-IDF
+        """
+        query_results_lc_naive_custom
+
+        A method of querying for results. It utilizes only TF-IDF
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+
+        bigrams: bool
+            Boolean determining if bigrams want to be included in the search
+        """
         stop_words = set(stopwords.words('english'))
         query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
 
@@ -418,7 +535,29 @@ class searchmodel:
         return result_lst[:k]
     
     # FIXED
-    def query_results_BM25(self, query_string, k = 10, bm_k = 1.2, bm_b = 0.75, bigrams = False): #tf-idf JUST TF-IDF
+    def query_results_BM25(self, query_string, k = 10, bm_k = 1.2, bm_b = 0.75, bigrams = True): 
+        """
+        query_results_lc_naive_custom
+
+        A method of querying for results. It utilizes purely BM25.
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+
+        bigrams: bool
+            Boolean determining if bigrams want to be included in the search
+        
+        bm_k: float
+            Float value that can be tuned for BM_25 calculation for saturation.
+
+        bm_b: float
+            Float value that can be tuned for BM_25 calculation for penalizing irrelevant tokens.
+        """
         stop_words = set(stopwords.words('english'))
         query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
 
@@ -460,7 +599,20 @@ class searchmodel:
 
     # FIXED
     def query_results_embed(self, query_string, k = 10): #just embed faiss
+        """
+        query_results_lc_naive_custom
 
+        A method of querying for results. It FAISS nearest matches and takes the top
+        scores from that result.
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+        """
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         desc_scores, desc_results = self.embed_dataset.search("embeddings", query_embedding, k)
         
@@ -470,8 +622,39 @@ class searchmodel:
         return result_lst[:k]
 
     # FIXED
-    def query_results_lc_norm(self, query_string, k = 10, bigrams = False, tf_alpha = 0.5,kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
-        #lc = normalize keyword matching score so that and cosine are all between 0-1 and so will the final result
+    def query_results_lc_norm(self, query_string, k = 10, bigrams = True, tf_alpha = 0.5,kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
+        """
+        query_results_lc_norm
+
+        A method of querying for results. It utilizes a linear combination of keyword matching and embedding cosine values.
+        It normalizes and as so the keyword portion is constrained to 0-1.
+        You can set the weights for the linear combination from 0-1.
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+        
+        tf_alpha: float
+            Float value from 0-1 which will set the linear combination ratio of the following equation
+            (tf_alpha) * keyword_score + (1-tf_alpha) * cosine_score(query_embeddings, embeddings)
+
+        bigrams: bool
+            Boolean determining if bigrams want to be included in the search
+        
+        kw_method: str
+            String either "TFIDF" or "BM25" that determines the keyword matching method.
+
+        bm_k: float
+            Float value that can be tuned for BM_25 calculation for saturation.
+
+        bm_b: float
+            Float value that can be tuned for BM_25 calculation for penalizing irrelevant tokens.
+        """
+        
         stop_words = set(stopwords.words('english'))
         query_tokens = [st.stem(word.lower()) for word in tokenizer.tokenize(query_string) if word not in stop_words]
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
@@ -528,8 +711,33 @@ class searchmodel:
         return result_lst[:k]
         
     # FIXED
-    def query_results_odds_evens(self, query_string, k = 10, bigrams = False, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): #do TF-IDF, do FAISS. Take the top k/2 for both. Make sure no overlap
-        #So long as return result_lst[0] is the index. It'll be chill
+    def query_results_odds_evens(self, query_string, k = 10, bigrams = True, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
+        """
+        query_results_odds_evens
+
+        A method of querying for the results using both keyword matching and semantic embeddings FAISS. The
+        top results are then put in alternating order (semantic results are evens, keyword results are odds)
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+
+        bigrams: bool
+            Boolean determining if bigrams want to be included in the search
+        
+        kw_method: str
+            String either being "TFIDF" or "BM25" that sets the keyword matching algorithm
+        
+        bm_k: float
+            Float value that can be tuned for BM_25 calculation for saturation.
+
+        bm_b: float
+            Float value that can be tuned for BM_25 calculation for penalizing irrelevant tokens.
+        """
 
         #Embedding portion
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
@@ -611,8 +819,35 @@ class searchmodel:
         # print(result_lst)
         return result_lst
 
-    # NEED TO FIX
-    def query_results_faiss_kw(self, query_string, k = 10, bigrams = False, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75):
+    # FIXED
+    def query_results_faiss_kw(self, query_string, k = 10, bigrams = True, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75):
+        """
+        query_results_faiss_kw
+
+        A method of querying for the results using both keyword matching and semantic embeddings FAISS. The results
+        are fist obtained with FAISS, then reorded with keyword ranking.
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+
+        bigrams: bool
+            Boolean determining if bigrams want to be included in the search
+        
+        kw_method: str
+            String either being "TFIDF" or "BM25" that sets the keyword matching algorithm
+        
+        bm_k: float
+            Float value that can be tuned for BM_25 calculation for saturation.
+
+        bm_b: float
+            Float value that can be tuned for BM_25 calculation for penalizing irrelevant tokens.
+        """
+         
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         _, desc_results = self.embed_dataset.search("embeddings", query_embedding, k)
 
@@ -651,62 +886,83 @@ class searchmodel:
         return result_lst[:k]
 
     # FIXED
-    def query_results_faiss_cos(self, query_string, k = 10, bigrams = False):
+    def query_results_faiss_cos(self, query_string, k = 10):
+        """
+        query_results_faiss_cos
+
+        A method of querying for the results using only semantic embeddings. The results
+        are fist obtained with FAISS, then reorded with cosine similarities of the query embeddings and the result
+        embeddings.
+
+        Parameters
+        ----------
+        query_string: str
+            The string query
+        
+        k: int
+            The k number of top results to return
+        """
+
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         _, desc_results = self.embed_dataset.search("embeddings", query_embedding, 2 * k)
 
-        # desc_scores are the indices for the "closest neighbors to the query"
-        stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
-
-        
-        if bigrams:
-            bigram_lst = list(ngrams(query_tokens, 2))
-            for bigram in bigram_lst:
-                if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO", bigram)
-                    query_tokens.append(bigram)
-                    
         
         result_lst = []
         for i in desc_results:
-            # tf_score = 0
-            # for token in query_tokens:
-            #     if (i, bigram) in self.tf_idf:
-            #         print(self.tf_idf[(i, token)])
-            #         tf_score += (self.tf_idf[(i, token)])
-            
-            # if tf_score != 0:
-            #     print(tf_score)
-
             result_lst.append([i, cosine_sim(self.tsed_DF["embeddings"][i], query_embedding[0])])
 
         
         result_lst.sort(reverse=True, key = lambda x: x[1])
-        # print(result_lst)
         return result_lst[:k]
 
 
     # Function which runs all 99 queries, and returns a pd df of the results
     def create_results(self, query_filepath, results_per_query = 100):
+        """
+        create_results:
+        Function that takes in the 99 test queries and returns it as a Pandas DataFrame
+        
+        Parameters
+        ----------
+        query_filepath: str
+            The string which locates where the 99 preset queries are
+        
+        results_per_query: int
+            The integer amount of top results to be returned per the query.
+        """
+
         queries = pd.read_csv(query_filepath)
-        # display(queries)
         q_lst = queries["query"].to_list()
-        # print(q_lst)
 
         lang_lst = []
         func_code_url_lst = []
         query_lst = []
+        func_docs_lst = []
+
+        func_dict = {"query_results_faiss_cos" : self.query_results_faiss_cos, "query_results_faiss_kw" : self.query_results_faiss_kw, "query_results_odds_evens" : self.query_results_odds_evens
+                     , "query_results_lc_norm" : self.query_results_lc_norm, "query_results_embed" : self.query_results_embed, "query_results_BM25" : self.query_results_BM25,
+                     "query_results_tfidf" : self.query_results_tfidf, "query_results_lc_naive_custom": self.query_results_lc_naive_custom}
 
         for i, query in enumerate(q_lst):
             # print(i)
-            fbm_lst = self.query_results_faiss_kw(query, results_per_query, bigrams=True, kw_method="BM25") #CHANGE THIS LINE TO CHECK DIFFERENT METHODS. FALSE = NO BIGRAMS
+            if self.query_function in {"query_results_faiss_cos", "query_results_embed"}:
+                fbm_lst = func_dict[self.query_function](query, results_per_query)
+            elif self.query_function in {"query_results_tfidf", "query_results_BM25"}: #, kw_method="BM25", tf_alpha=0.75,bigrams=True
+                fbm_lst = func_dict[self.query_function](query, results_per_query, bigrams = self.bigrams)
+            elif self.query_function in {"query_results_faiss_kw", "query_results_odds_evens"}:
+                fbm_lst = func_dict[self.query_function](query, results_per_query, bigrams = self.bigrams, kw_method = self.kw_method)
+            else: #{"query_results_lc_norm", "query_results_lc_naive_custom"}
+                fbm_lst = func_dict[self.query_function](query, results_per_query, bigrams = self.bigrams, kw_method = self.kw_method, tf_alpha = self.tf_alpha)
+            
             query_lst += [query for j in range(len(fbm_lst))]
             
             for lst in fbm_lst:
                 # print(lst)
                 lang_lst.append(self.tsed_DF.iloc[lst[0]]["language"])
                 func_code_url_lst.append(self.tsed_DF.iloc[lst[0]]["func_code_url"])
+                func_docs_lst.append(self.tsed_DF.iloc[lst[0]]['func_documentation_string'])
+                # func_names_lst.append(self.tsed_DF.iloc[lst[0]]['func_name'])
 
-        prediction_df = pd.DataFrame({'language' : lang_lst, 'url': func_code_url_lst, "query" : query_lst})
+
+        prediction_df = pd.DataFrame({'language' : lang_lst, 'url': func_code_url_lst, "query" : query_lst, "documentation" : func_docs_lst})
         return prediction_df
