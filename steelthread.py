@@ -70,7 +70,7 @@ def load_data(num_rows = 100000, seed = 1):
     file_paths = {"inverted_index" : f"./pickleObjects/{inverted_index_name}", "bigrams_set" : f"./pickleObjects/{bigrams_set_name}", "bm_avg_DL" : f"./pickleObjects/{bm_avg_DL_name}",
                   "embeddings_dataset" : f"./pickleObjects/{tsed_name}"}
 
-    return train_dataset, file_paths
+    return train_dataset_subset, file_paths
     
 
 
