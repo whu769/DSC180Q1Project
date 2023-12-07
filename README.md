@@ -7,8 +7,7 @@ William Hu (wyhu@ucsd.edu)
 
 # Introduction
 
-The goal of this project is to explore and build a search engine that can deliver good quantitative and qualitative results to code queries. We're seeking to match or surpass the NDCG baseline score of 0.337 and obtain 
-results we deem qualitatively accurate.
+The goal of this project is to explore and build a search engine that can deliver good quantitative and qualitative results to code queries. We're seeking to obtain an NDCG score of over 0.2 and obtain results we deem qualitatively accurate.
 
 ### Architecture/Steps:
 First our search engine will take in a natural language query and K desired results the user wants returned, tokenize it in both the semantic search embeddings space and the nlp tokenization vector, then it will go through various

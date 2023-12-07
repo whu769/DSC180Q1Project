@@ -116,6 +116,19 @@ class searchmodel:
 
     self.embed_dataset: HuggingFace Datasets
         Dataset containing the semantic embeddings.
+    
+    self.kw_method: str
+            String, either "TFIDF" or "BM25" that sets the key term matching algorithm.
+        
+    self.tf_alpha: float
+        Float value between [0, 1] that dictates the linear combination weights of the term frequency
+        with the semantic similarity.
+    
+    self.query_function: str
+        String that represents the method of querying for results (Ex: tfidf, bm25, linear combination)
+
+    self.bigrams: bool
+        Boolean representing the use of bigrams or not in the inverted index and search algorithm
 
     Methods
     ----------
@@ -165,7 +178,7 @@ class searchmodel:
         functions with FAISS, then calculating the cosine similarity of those.
     """
 
-    def __init__(self, data, file_paths, loadEmbed = False, loadTF = False):
+    def __init__(self, data, file_paths, query_function, kw_method, tf_alpha, bigrams,loadEmbed = False, loadTF = False):
         """ __init__ method
         Initializes a searchmodel object
 
@@ -185,6 +198,19 @@ class searchmodel:
         loadTF: bool
             A boolean that is True/False depending on whether an inverted_index exists already. If False, 
             the model will train one from the data first
+        
+        kw_method: str
+            String, either "TFIDF" or "BM25" that sets the key term matching algorithm.
+        
+        tf_alpha: float
+            Float value between [0, 1] that dictates the linear combination weights of the term frequency
+            with the semantic similarity.
+        
+        query_function: str
+            String that represents the method of querying for results (Ex: tfidf, bm25, linear combination)
+
+        bigrams: bool
+            Boolean representing the use of bigrams or not
         """
         self.data = data
         self.loadEmbed = loadEmbed
@@ -193,6 +219,10 @@ class searchmodel:
 
         self.inverted_index = None
         self.embed_dataset = None
+        self.query_function = query_function
+        self.kw_method = kw_method
+        self.tf_alpha = tf_alpha
+        self.bigrams = bigrams
 
         #Load or make the inverted index and embed_dataset
         if loadEmbed:
@@ -450,7 +480,7 @@ class searchmodel:
         return result_lst[:k]
         
     # FIXED
-    def query_results_tfidf(self, query_string, k = 10, bigrams = False): #tf-idf JUST TF-IDF
+    def query_results_tfidf(self, query_string, k = 10, bigrams = True): #tf-idf JUST TF-IDF
         """
         query_results_lc_naive_custom
 
@@ -505,7 +535,7 @@ class searchmodel:
         return result_lst[:k]
     
     # FIXED
-    def query_results_BM25(self, query_string, k = 10, bm_k = 1.2, bm_b = 0.75, bigrams = False): 
+    def query_results_BM25(self, query_string, k = 10, bm_k = 1.2, bm_b = 0.75, bigrams = True): 
         """
         query_results_lc_naive_custom
 
@@ -592,7 +622,7 @@ class searchmodel:
         return result_lst[:k]
 
     # FIXED
-    def query_results_lc_norm(self, query_string, k = 10, bigrams = False, tf_alpha = 0.5,kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
+    def query_results_lc_norm(self, query_string, k = 10, bigrams = True, tf_alpha = 0.5,kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
         """
         query_results_lc_norm
 
@@ -681,7 +711,7 @@ class searchmodel:
         return result_lst[:k]
         
     # FIXED
-    def query_results_odds_evens(self, query_string, k = 10, bigrams = False, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
+    def query_results_odds_evens(self, query_string, k = 10, bigrams = True, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75): 
         """
         query_results_odds_evens
 
@@ -790,7 +820,7 @@ class searchmodel:
         return result_lst
 
     # FIXED
-    def query_results_faiss_kw(self, query_string, k = 10, bigrams = False, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75):
+    def query_results_faiss_kw(self, query_string, k = 10, bigrams = True, kw_method = "TFIDF", bm_k = 1.2, bm_b = 0.75):
         """
         query_results_faiss_kw
 
@@ -856,7 +886,7 @@ class searchmodel:
         return result_lst[:k]
 
     # FIXED
-    def query_results_faiss_cos(self, query_string, k = 10, bigrams = False):
+    def query_results_faiss_cos(self, query_string, k = 10):
         """
         query_results_faiss_cos
 
@@ -871,26 +901,11 @@ class searchmodel:
         
         k: int
             The k number of top results to return
-
-        bigrams: bool
-            Boolean determining if bigrams want to be included in the search
         """
 
         query_embedding = get_embeddings([query_string]).cpu().detach().numpy()
         _, desc_results = self.embed_dataset.search("embeddings", query_embedding, 2 * k)
 
-        # desc_scores are the indices for the "closest neighbors to the query"
-        stop_words = set(stopwords.words('english'))
-        query_tokens = [st.stem(word) for word in tokenizer.tokenize(query_string) if word not in stop_words]
-
-        
-        if bigrams:
-            bigram_lst = list(ngrams(query_tokens, 2))
-            for bigram in bigram_lst:
-                if bigram in self.inverted_index:
-                    # print("HELLOOOOOOOOOOO", bigram)
-                    query_tokens.append(bigram)
-                    
         
         result_lst = []
         for i in desc_results:
@@ -924,9 +939,21 @@ class searchmodel:
         query_lst = []
         func_docs_lst = []
 
+        func_dict = {"query_results_faiss_cos" : self.query_results_faiss_cos, "query_results_faiss_kw" : self.query_results_faiss_kw, "query_results_odds_evens" : self.query_results_odds_evens
+                     , "query_results_lc_norm" : self.query_results_lc_norm, "query_results_embed" : self.query_results_embed, "query_results_BM25" : self.query_results_BM25,
+                     "query_results_tfidf" : self.query_results_tfidf, "query_results_lc_naive_custom": self.query_results_lc_naive_custom}
+
         for i, query in enumerate(q_lst):
             # print(i)
-            fbm_lst = self.query_results_lc_naive_custom(query, results_per_query, kw_method="BM25", tf_alpha=0.75,bigrams=True) #CHANGE THIS LINE TO CHECK DIFFERENT METHODS. FALSE = NO BIGRAMS
+            if self.query_function in {"query_results_faiss_cos", "query_results_embed"}:
+                fbm_lst = func_dict[self.query_function](query, results_per_query)
+            elif self.query_function in {"query_results_tfidf", "query_results_BM25"}: #, kw_method="BM25", tf_alpha=0.75,bigrams=True
+                fbm_lst = func_dict[self.query_function](query, results_per_query, bigrams = self.bigrams)
+            elif self.query_function in {"query_results_faiss_kw", "query_results_odds_evens"}:
+                fbm_lst = func_dict[self.query_function](query, results_per_query, bigrams = self.bigrams, kw_method = self.kw_method)
+            else: #{"query_results_lc_norm", "query_results_lc_naive_custom"}
+                fbm_lst = func_dict[self.query_function](query, results_per_query, bigrams = self.bigrams, kw_method = self.kw_method, tf_alpha = self.tf_alpha)
+            
             query_lst += [query for j in range(len(fbm_lst))]
             
             for lst in fbm_lst:
