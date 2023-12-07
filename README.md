@@ -71,8 +71,16 @@ Then you can run anaconda and clone the environment.yml file to get the code env
 
 ## DSMLP
 
-For DSMLP machines, they should have the prerequisite packages installed so clone the repo after remoting onto your account and you can run any of the jupyter notebooks. 
+For DSMLP machines, they should have the majority of the prerequisite packages installed so clone the repo after remoting onto your account and you can run any of the jupyter notebooks. 
 You will need to download the CodeSearchNet data from HuggingFace though. 
+
+Things to do once cloning the git:
+* For local machines, clone the Anaconda environment with the "environment.yml"
+* For DSMLP, initialize an instance from the DSC180A workspace as it has alot of prerequisite ML packages installed (We recommend something like this: launch-scipy-ml.sh -c 8 -m 32 -g 1 -W DSC180A_FA23_A00)
+* Make sure to run the Jupyter Notebook file inside the Dataset Folder
+* Create a folder in the repo called "pickleObjects" - This is where all of the trained inverted indexes and embeddings will be stored.
+* Make sure nltk is installed with the nltk english stopwords. (nltk.download('stopwords'))
+
 
 ## Accessing Data
 
