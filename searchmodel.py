@@ -238,6 +238,15 @@ class searchmodel:
             with open(file_paths["inverted_index"], 'rb') as f:  # open a text file
                 self.inverted_index = pickle.load(f) # serialize the list
                 f.close()
+            
+            with open(file_paths["bigrams_set"], 'rb') as f:  # open a text file
+                self.bigram_set = pickle.load(f) # serialize the list
+                f.close()
+            
+            with open(file_paths["bm_avg_DL"], 'rb') as f:  # open a text file
+                self.bm_avg_DL = pickle.load(f) # serialize the list
+                f.close()
+
         else:
             self.make_inverted_index_docs_bigrams()
 
@@ -314,14 +323,26 @@ class searchmodel:
                         inverted_index[bigram] = {}
                     inverted_index[bigram][i] = (bigram_counter_i[bigram], total_len)
         
+
+        self.bm_avg_DL = total_len_sum / len(tsed_DF)
+        self.inverted_index = inverted_index
+        self.tsed_DF = tsed_DF
+
+
         #Pickle afterwards
         with open(f"{self.file_paths['inverted_index']}", 'wb') as f:  # open a text file
             pickle.dump(inverted_index, f) # serialize the list
             f.close()
         
-        self.bm_avg_DL = total_len_sum / len(tsed_DF)
-        self.inverted_index = inverted_index
-        self.tsed_DF = tsed_DF
+        with open(f"{self.file_paths['bigrams_set']}", 'wb') as f:  # open a text file
+            pickle.dump(self.bigram_set, f) # serialize the list
+            f.close()
+        
+        with open(f"{self.file_paths['bm_avg_DL']}", 'wb') as f:  # open a text file
+            pickle.dump(self.bm_avg_DL, f) # serialize the list
+            f.close()
+        
+        
     
     # Only bigrams
     def make_inverted_index_docs_bigrams_only(self):
@@ -368,6 +389,7 @@ class searchmodel:
         with open(f"{self.file_paths['inverted_index']}", 'wb') as f:  # open a text file
             pickle.dump(inverted_index, f) # serialize the list
             f.close()
+        
         
         self.inverted_index = inverted_index
         self.tsed_DF = tsed_DF

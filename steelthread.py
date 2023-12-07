@@ -56,6 +56,8 @@ def load_data(num_rows = 100000, seed = 1):
     # filepath_pkl_obj = "./PickleObjects/"
     inverted_index_name = f"inverted_index_{num_rows}_docs_bigrams.pkl"
     tsed_name = f"train_subset_embeddings_dataset_{num_rows}_cb.pkl"
+    bigrams_set_name = f"bigrams_set_{num_rows}_docs_bigrams.pkl"
+    bm_avg_DL_name = f"bm_avg_DL_{num_rows}.pkl"
 
     #Create the train data subset
     np.random.seed(seed)
@@ -65,7 +67,8 @@ def load_data(num_rows = 100000, seed = 1):
     # print(len(train_dataset_subset))
 
     #Set the filepaths and pickle object names
-    file_paths = {"inverted_index" : f"./pickleObjects/{inverted_index_name}", "embeddings_dataset" : f"./pickleObjects/{tsed_name}"}
+    file_paths = {"inverted_index" : f"./pickleObjects/{inverted_index_name}", "bigrams_set" : f"./pickleObjects/{bigrams_set_name}", "bm_avg_DL" : f"./pickleObjects/{bm_avg_DL_name}",
+                  "embeddings_dataset" : f"./pickleObjects/{tsed_name}"}
 
     return train_dataset, file_paths
     
