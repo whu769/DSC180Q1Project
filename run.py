@@ -1,6 +1,13 @@
+"""
+run.py
+
+The script to run on command line to create models and test the 99 queries.
+Will print out NDCG results.
+"""
 import steelthread
 import argparse
 
+#Create argparse variables
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_size", type = int, required= True, help="Number of rows to take from dataset")
 parser.add_argument("--random_seed", type = int, required= True, help="Seed to randomly shuffle data")
@@ -18,13 +25,15 @@ parser.add_argument("--res_per_query", type = int, required= True, help= "Int de
 
 args = vars(parser.parse_args())
 
-# Run this for example:
-# python run.py --data_size 100000 --random_seed 1 --loadEmbed True --loadTF True --queryMethod "query_results_lc_naive_custom" --tfMethod "BM25" --tf_alpha 0.75 --bigrams True --res_per_query 50
-
+#takes in argparse variables and creates the corresponding model and prints out results
 if __name__ == '__main__':
     # print(args)
     model = steelthread.create_model(args["data_size"], args["random_seed"], args["loadEmbed"], 
                                      args["loadTF"], args["queryMethod"], args["tfMethod"], args["tf_alpha"]
                                      , args["bigrams"])
     steelthread.create_results(model, args["res_per_query"])
+
+
+# Here is an example command to run:
+# python run.py --data_size 100000 --random_seed 1 --loadEmbed True --loadTF True --queryMethod "query_results_lc_naive_custom" --tfMethod "BM25" --tf_alpha 0.75 --bigrams True --res_per_query 50
 

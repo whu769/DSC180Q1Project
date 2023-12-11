@@ -8,6 +8,29 @@ speed up the process.
 
 The models has various querying methods from FAISS similarity scoring, to only TF-IDF
 
+Class Functions
+---------------
+cls_pooling - 
+    Helper function to obtain embedding vectors from embedding model (Method obtained from HuggingFace)
+get_embeddings - 
+    Helper function to create embedding vectors from HuggingFace models (Method obtained from HuggingFace)
+cosine_sim - 
+    Function that calculates the cosine similarity between two array-like objects
+
+Class attributes
+---------------
+device: str
+    String that sets where the device calculates the TensorFlow vectors (CPU or GPU)
+model_ckpt: str
+    String that sets which specific huggingFace model to create the embeddings off of
+tokenizer: AutoTokenizer
+    HuggingFace autotokenizer that is made off the corresponding "model_ckpt"
+trained_model: AutoModel
+    HuggingFace automodel that is made off the corresponding "model_ckpt"
+st: Regexstemmer
+    NLTK regex stemmer that uses regex to stem words based off given prefix and suffixes
+rgx_tokenizer: RegexpTokenizer
+    NLTK regex tokenizer.
 """
 import pandas as pd
 import numpy as np
@@ -250,7 +273,7 @@ class searchmodel:
         else:
             self.make_inverted_index_docs_bigrams()
 
-    # No bigrams
+    # No bigrams. Not used/legacy
     def make_inverted_index_docs(self):
         """
         make_inverted_index_docs
@@ -279,7 +302,7 @@ class searchmodel:
         self.inverted_index = inverted_index
         self.tsed_DF = tsed_DF
     
-    # With bigrams
+    # With bigrams. The function that is being used
     def make_inverted_index_docs_bigrams(self):
         """
         make_inverted_index_docs
@@ -344,7 +367,7 @@ class searchmodel:
         
         
     
-    # Only bigrams
+    # Only bigrams. Legacy method
     def make_inverted_index_docs_bigrams_only(self):
         """
         make_inverted_index_docs_bigrams_only
