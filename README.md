@@ -74,12 +74,14 @@ Then you can run anaconda and clone the environment.yml file to get the code env
 For DSMLP machines, they should have the majority of the prerequisite packages installed so clone the repo after remoting onto your account and you can run any of the jupyter notebooks. 
 You will need to download the CodeSearchNet data from HuggingFace though. 
 
-Things to do once cloning the git:
+## Things to do once cloning the git:
 * For local machines, clone the Anaconda environment with the "environment.yml"
 * For DSMLP, initialize an instance from the DSC180A workspace as it has alot of prerequisite ML packages installed (We recommend something like this: launch-scipy-ml.sh -c 8 -m 32 -g 1 -W DSC180A_FA23_A00)
-* Make sure to run the Jupyter Notebook file inside the Dataset Folder
+* Make sure to run the Jupyter Notebook file inside the Dataset Folder. This file helps obtain a portion (or all of the CodeSearchNet data to run) (FOR DSMLP the full dataset is NOT recommended due to storage restraints. Read the "Accessing Data" and "disclaimer" below)
 * Create a folder in the repo called "pickleObjects" - This is where all of the trained inverted indexes and embeddings will be stored.
 * Make sure nltk is installed with the nltk english stopwords. (nltk.download('stopwords'))
+* Then you can either use run.py or run.ipynb to test the training and different methods we've made and have fun exploring!
+* The csv_output/ folder will create the output of the obtained queries and so you can also see the predicted results for yourself. (There are some in there already as an example)
 
 
 ## Accessing Data
@@ -90,7 +92,7 @@ This project utilizes the CodeSearchNet dataset. To access it, specifically the 
 
 #### Disclaimer when loading data on DSMLP
 I advise caution when running ```load_dataset("code_search_net", "all")``` as my datahub instance crashed and I had to clear the cache before being able to access it again. I recommend loading a smaller subset, possibly for just all the Python functions run 
-```load_dataset("code_search_net", "python")```. This will load a smaller dataset and hopefully not crash your datahub (I've crashed mine a couple times now).
+```load_dataset("code_search_net", "python")``` or ```load_dataset("code_search_net", "java")```. This will load a smaller dataset and hopefully not crash your datahub (I've crashed mine a couple times now).
 
 *** 
 Within the Dataset folder, there is also a Testing folder which contains two files: annotationStore.csv, annotationStore_UNIQUE.csv and queries.csv
@@ -101,9 +103,9 @@ There are some repeats in annotationStore.csv however, and annotationStore_UNIQU
 
 The queries file consists of 99 basic coding queries which are the basis of the testing. 
 
-## Storing the Data
+## Storing the Trained/Processed Data
 
-In the test.ipnyb Jupyter Notebook file, there are cells which specifically save and load pickled objects to reduce time spent training the large models. It's recommended to create a folder within the /Dataset folder (Example: pickleObjects/), include it in the gitignore file, and accessing the saved models/results there. 
+In the test.ipnyb Jupyter Notebook file, there are cells which specifically save and load pickled objects to reduce time spent training the large models. You have to create a pickleObjects/ folder within the Dataset/ folder to set the path to save the inverted indexes and embeddings, include it in the gitignore file, and accessing the saved models/results there. 
 
 # Code Credit
 
